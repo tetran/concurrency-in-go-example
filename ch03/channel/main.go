@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"os"
 	"sync"
 )
 
@@ -20,6 +22,12 @@ func main() {
 
 	fmt.Println("--- Running chan5 ---")
 	chan5()
+
+	fmt.Println("--- Running chan6 ---")
+	chan6()
+
+	fmt.Println("--- Running chan7 ---")
+	chan7()
 
 	// fmt.Println("--- Running chanErr2 ---")
 	// chanErr2()
@@ -85,6 +93,46 @@ func chan5() {
 	fmt.Println("Unblocking goroutines...")
 	close(begin)
 	wg.Wait()
+}
+
+// buffered channel
+func chan6() {
+	var stdoutBuff bytes.Buffer
+	defer stdoutBuff.WriteTo(os.Stdout)
+
+	intChan := make(chan int, 4)
+	go func() {
+		defer close(intChan)
+		defer fmt.Fprintln(&stdoutBuff, "Producer Done.")
+		for i := 0; i < 5; i++ {
+			fmt.Fprintf(&stdoutBuff, "Sending: %d\n", i)
+			intChan <- i
+		}
+	}()
+
+	for val := range intChan {
+		fmt.Fprintf(&stdoutBuff, "Received %v.\n", val)
+	}
+}
+
+// channel ownership
+func chan7() {
+	chanOwner := func() <-chan int {
+		resultChan := make(chan int, 5)
+		go func() {
+			defer close(resultChan)
+			for i := 0; i <= 5; i++ {
+				resultChan <- i
+			}
+		}()
+		return resultChan
+	}
+
+	resultChan := chanOwner()
+	for result := range resultChan {
+		fmt.Printf("Received: %d\n", result)
+	}
+	fmt.Println("Done receiving!")
 }
 
 // // Compile error
